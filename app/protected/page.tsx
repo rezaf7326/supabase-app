@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import TempComponentPage from "../TempComponent";
+import TempComponentPage from "./TempComponent";
 
 export default async function ProtectedPage() {
   const supabase = await createClient();
