@@ -4,12 +4,16 @@
 
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-import { HTTP_METHODS } from "next/dist/server/web/http";
-import { handleGetBooks } from "./get-books";
+import { createClient } from "npm:@supabase/supabase-js";
+import { handleGetBooks } from "./get-books.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === HTTP_METHODS[0]) {
-    return handleGetBooks(req);
+  const supaUrl = Deno.env.get('_SUPABASE_URL') as string;
+  const supaSecret = Deno.env.get('_SUPABASE_SERVICE_KEY') as string;
+  const supabase = createClient(supaUrl, supaSecret);
+
+  if (req.method === 'GET') {
+    return handleGetBooks(req, supabase);
   }
 
   return new Response(

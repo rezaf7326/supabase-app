@@ -2,7 +2,6 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { redirect } from "next/navigation";
 import { FetchRequestFactory } from "@/utils/fetch";
 import Pagination from "@/components/ui/Pagination";
 import { PaginationMetadata } from "@/utils/pagination";

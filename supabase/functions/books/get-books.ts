@@ -1,7 +1,5 @@
-import { createClient } from "@/utils/supabase/client";
-import { Pagination } from '@/utils/pagination';
-
-const supabase = createClient();
+import { SupabaseClient } from "npm:@supabase/supabase-js";
+import { Pagination } from './pagination.ts'; // FIXME: import from ../../../utils/pagination
 
 function parsePositive(value: unknown): number | undefined {
   return value && !isNaN(Number(value))
@@ -9,7 +7,8 @@ function parsePositive(value: unknown): number | undefined {
     : undefined;
 }
 
-export async function handleGetBooks(req: Request): Promise<Response> {
+export async function handleGetBooks(req: Request, supabase: SupabaseClient): Promise<Response> {
+  console.log(`handling a new get books request: ${req.url}`);
   const { searchParams } = new URL(req.url);
   const pageParam = parsePositive(searchParams.get('page')) || 1;
   const sizeParam = parsePositive(searchParams.get('size')) || 10;
@@ -31,6 +30,9 @@ export async function handleGetBooks(req: Request): Promise<Response> {
       `,
       { count: "exact" }
     );
+  console.log('printing query object...'); // TODO REMOVE
+  console.dir(query, { depth: 15 }); // TODO REMOVE
+
   if (authorIdParam) {
     query = query.eq("authors_books.author_id", authorIdParam);
   }
@@ -45,13 +47,15 @@ export async function handleGetBooks(req: Request): Promise<Response> {
   const { data: books, count, error } = await query;
 
   if (error) {
+    console.error(error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500 },
     );
   }
 
-  return new Response(JSON.stringify({
+  console.log(`fetched ${count} books from the database`);
+  const response = JSON.stringify({
     metadata: new Pagination(
       count || 0, pageParam, sizeParam).paginatedMetadata,
     books: books.map((book) => ({
@@ -59,12 +63,15 @@ export async function handleGetBooks(req: Request): Promise<Response> {
       authors: book.authors.map(
         ({ author_id, author }) => ({
           id: author_id,
-          name: author[0].name,
-          email: author[0].email,
+          name: Array.isArray(author) ? author[0]?.name : (author as any)?.name,
+          email: Array.isArray(author) ? author[0]?.email : (author as any)?.email,
         }),
       ),
     })),
-  }), {
+  });
+  console.log('response', response); // TODO REMOVE
+
+  return new Response(response, {
     headers: { "Content-Type": "application/json" },
   });
 }
