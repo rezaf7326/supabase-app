@@ -1,5 +1,6 @@
 import { SupabaseClient } from "npm:@supabase/supabase-js";
-import { Pagination } from './pagination.ts'; // FIXME: import from ../../../utils/pagination
+import { corsHeaders } from "../_shared/cors.ts";
+import { Pagination } from "./pagination.ts"; // FIXME: import from ../../../utils/pagination
 
 function parsePositive(value: unknown): number | undefined {
   return value && !isNaN(Number(value))
@@ -30,8 +31,6 @@ export async function handleGetBooks(req: Request, supabase: SupabaseClient): Pr
       `,
       { count: "exact" }
     );
-  console.log('printing query object...'); // TODO REMOVE
-  console.dir(query, { depth: 15 }); // TODO REMOVE
 
   if (authorIdParam) {
     query = query.eq("authors_books.author_id", authorIdParam);
@@ -50,7 +49,10 @@ export async function handleGetBooks(req: Request, supabase: SupabaseClient): Pr
     console.error(error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500 },
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 
@@ -69,9 +71,8 @@ export async function handleGetBooks(req: Request, supabase: SupabaseClient): Pr
       ),
     })),
   });
-  console.log('response', response); // TODO REMOVE
 
   return new Response(response, {
-    headers: { "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }

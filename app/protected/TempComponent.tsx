@@ -2,13 +2,15 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { FetchRequestFactory } from "@/utils/fetch";
+import { FetchError, FetchRequestFactory } from "@/utils/fetch";
 import Pagination from "@/components/ui/Pagination";
 import { PaginationMetadata } from "@/utils/pagination";
 import { Book } from "@/utils/interfaces";
-import { Table } from "@radix-ui/themes";
+import { Callout, IconButton, Table } from "@radix-ui/themes";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import { corsHeaders } from "@/supabase/functions/_shared/cors";
+import { CaretSortIcon } from "@radix-ui/react-icons";
 
 type GetBooksResponse = Array<
   Book & {
@@ -28,9 +30,9 @@ export default function TempComponentPage() {
   );
   const [books, setBooks] = useState<GetBooksResponse>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState(undefined);
+  const [error, setError] = useState<any>(undefined);
   const [page, setPage] = useState<number>(1);
-  const [size] = useState<number>(10);
+  const [size] = useState<number>(5);
   const [filterAuthor, setFilterAuthor] = useState<string | undefined>(
     undefined
   );
@@ -40,19 +42,22 @@ export default function TempComponentPage() {
 
   useEffect(() => {
     async function fetchData() {
-      console.log(
-        `supabase functions url: ${process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL}`
-      ); // TODO REMOVE
       const { body } = await new FetchRequestFactory()
         .baseUrl(process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL as string)
         .path("books")
-        .query({}) // TODO add queries
+        .query({
+          page,
+          size,
+          // author_id: filterAuthor, TODO:
+          publish_date: sortByPublishDate,
+        })
         .create()
         .get<{
           metadata: PaginationMetadata;
           books: GetBooksResponse;
         }>({
           headers: {
+            ...corsHeaders,
             Authorization: (await supabase.auth.getSession()).data.session!
               .access_token,
           },
@@ -60,11 +65,14 @@ export default function TempComponentPage() {
       if (body) {
         setPagination(body.metadata);
         setBooks(body.books);
+        JSON.stringify(body.books, null, 2);
       }
     }
 
-    fetchData().catch(setError);
-  }, []);
+    fetchData()
+      .catch(setError)
+      .finally(() => setLoading(false));
+  }, [page, size, filterAuthor, sortByPublishDate]);
 
   const nextPage = () => {
     if (pagination && page < pagination.totalPages) {
@@ -81,7 +89,7 @@ export default function TempComponentPage() {
           <Table.RowHeaderCell>
             <Skeleton />
           </Table.RowHeaderCell>
-          <Table.Cell className="hidden lg:table-cell">
+          <Table.Cell>
             <Skeleton />
           </Table.Cell>
           <Table.Cell>
@@ -102,51 +110,66 @@ export default function TempComponentPage() {
 
   return (
     <div>
-      <Table.Root className="min-w-full my-5" layout="auto" variant="surface">
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeaderCell>Title</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell className="hidden lg:table-cell">
-              Summary
-            </Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>Authors</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell
-              onClick={() =>
-                setSortByPublishDate(
-                  sortByPublishDate === "desc" ? "asc" : "desc"
-                )
-              }
-            >
-              Publish Date
-            </Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>Price</Table.ColumnHeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {loading
-            ? loadingRows()
-            : books.map((book) => (
-                <Table.Row key={book.id}>
-                  <Table.RowHeaderCell>{book.title}</Table.RowHeaderCell>
-                  <Table.Cell className="hidden lg:table-cell">
-                    {book.summary}
-                  </Table.Cell>
-                  <Table.Cell>
-                    {book.authors.map(({ name }) => name).join(", ")}
-                  </Table.Cell>
-                  <Table.Cell>{book.publish_date.toDateString()}</Table.Cell>
-                  <Table.Cell>{book.price}</Table.Cell>
-                </Table.Row>
-              ))}
-        </Table.Body>
-      </Table.Root>
-      {pagination && (
-        <Pagination
-          metadata={pagination}
-          setPage={setPage}
-          prevPage={prevPage}
-          nextPage={nextPage}
-        />
+      {error ? (
+        <Callout.Root color="red">
+          <Callout.Text>
+            {error instanceof FetchError
+              ? error.message
+              : JSON.stringify(error)}
+          </Callout.Text>
+        </Callout.Root>
+      ) : (
+        <>
+          <Table.Root className="w-full" layout="fixed" variant="ghost">
+            <Table.Header>
+              <Table.Row>
+                <Table.ColumnHeaderCell>Title</Table.ColumnHeaderCell>
+                <Table.ColumnHeaderCell>Summary</Table.ColumnHeaderCell>
+                <Table.ColumnHeaderCell>Authors</Table.ColumnHeaderCell>
+                <Table.ColumnHeaderCell>
+                  Published{" "}
+                  <IconButton
+                    onClick={() =>
+                      setSortByPublishDate(
+                        sortByPublishDate === "desc" ? "asc" : "desc"
+                      )
+                    }
+                  >
+                    <CaretSortIcon />
+                  </IconButton>
+                </Table.ColumnHeaderCell>
+                <Table.ColumnHeaderCell>Price $</Table.ColumnHeaderCell>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {loading
+                ? loadingRows()
+                : books.map((book) => (
+                    <Table.Row key={book.id}>
+                      <Table.RowHeaderCell>{book.title}</Table.RowHeaderCell>
+                      <Table.Cell>{book.summary}</Table.Cell>
+                      <Table.Cell>
+                        {book.authors.map(({ name }) => name).join(", ")}
+                      </Table.Cell>
+                      <Table.Cell>
+                        {book.publish_date instanceof Date
+                          ? book.publish_date.toDateString()
+                          : book.publish_date}
+                      </Table.Cell>
+                      <Table.Cell>{book.price}</Table.Cell>
+                    </Table.Row>
+                  ))}
+            </Table.Body>
+          </Table.Root>
+          {pagination && (
+            <Pagination
+              metadata={pagination}
+              setPage={setPage}
+              prevPage={prevPage}
+              nextPage={nextPage}
+            />
+          )}
+        </>
       )}
     </div>
   );

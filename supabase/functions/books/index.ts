@@ -6,8 +6,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "npm:@supabase/supabase-js";
 import { handleGetBooks } from "./get-books.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   const supaUrl = Deno.env.get('_SUPABASE_URL') as string;
   const supaSecret = Deno.env.get('_SUPABASE_SERVICE_KEY') as string;
   const supabase = createClient(supaUrl, supaSecret);
@@ -18,7 +23,10 @@ Deno.serve(async (req) => {
 
   return new Response(
     JSON.stringify({ error: 'Method Not Allowed' }),
-    { status: 405 },
+    {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    },
   );
 });
 
