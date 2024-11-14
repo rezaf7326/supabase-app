@@ -1,8 +1,10 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import Pagination from "@/components/ui/Pagination";
+import { createClient } from "@/utils/supabase/client";
+import { redirect } from "next/navigation";
 import { FetchRequestFactory } from "@/utils/fetch";
+import Pagination from "@/components/ui/Pagination";
 import { PaginationMetadata } from "@/utils/pagination";
 import { Book } from "@/utils/interfaces";
 import { Table } from "@radix-ui/themes";
@@ -19,6 +21,8 @@ type GetBooksResponse = Array<
   }
 >;
 
+const supabase = createClient();
+
 export default function TempComponentPage() {
   const [pagination, setPagination] = useState<PaginationMetadata | undefined>(
     undefined
@@ -28,6 +32,12 @@ export default function TempComponentPage() {
   const [error, setError] = useState(undefined);
   const [page, setPage] = useState<number>(1);
   const [size] = useState<number>(10);
+  const [filterAuthor, setFilterAuthor] = useState<string | undefined>(
+    undefined
+  );
+  const [sortByPublishDate, setSortByPublishDate] = useState<"desc" | "asc">(
+    "desc"
+  );
 
   useEffect(() => {
     async function fetchData() {
@@ -42,7 +52,12 @@ export default function TempComponentPage() {
         .get<{
           metadata: PaginationMetadata;
           books: GetBooksResponse;
-        }>({ headers: { Authorization: "Bearer " } }); // Cookies.get("token") as string
+        }>({
+          headers: {
+            Authorization: (await supabase.auth.getSession()).data.session!
+              .access_token,
+          },
+        });
       if (body) {
         setPagination(body.metadata);
         setBooks(body.books);
@@ -73,6 +88,12 @@ export default function TempComponentPage() {
           <Table.Cell>
             <Skeleton />
           </Table.Cell>
+          <Table.Cell>
+            <Skeleton />
+          </Table.Cell>
+          <Table.Cell>
+            <Skeleton />
+          </Table.Cell>
         </Table.Row>
       );
     }
@@ -90,6 +111,16 @@ export default function TempComponentPage() {
               Summary
             </Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>Authors</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell
+              onClick={() =>
+                setSortByPublishDate(
+                  sortByPublishDate === "desc" ? "asc" : "desc"
+                )
+              }
+            >
+              Publish Date
+            </Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>Price</Table.ColumnHeaderCell>
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -104,6 +135,8 @@ export default function TempComponentPage() {
                   <Table.Cell>
                     {book.authors.map(({ name }) => name).join(", ")}
                   </Table.Cell>
+                  <Table.Cell>{book.publish_date.toDateString()}</Table.Cell>
+                  <Table.Cell>{book.price}</Table.Cell>
                 </Table.Row>
               ))}
         </Table.Body>
