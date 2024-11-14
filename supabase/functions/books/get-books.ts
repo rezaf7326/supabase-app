@@ -1,20 +1,34 @@
 import { SupabaseClient } from "npm:@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { Pagination } from "./pagination.ts"; // FIXME: import from ../../../utils/pagination
+import { InternalServerError } from 'npm:http-errors';
+import { RequestHelper } from "./request.helper.ts";
 
-function parsePositive(value: unknown): number | undefined {
-  return value && !isNaN(Number(value))
-    ? Number(value)
-    : undefined;
-}
-
-export async function handleGetBooks(req: Request, supabase: SupabaseClient): Promise<Response> {
+export async function handleGetBooks(
+  req: Request,
+  supabase: SupabaseClient,
+): Promise<Response> {
   console.log(`handling a new get books request: ${req.url}`);
-  const { searchParams } = new URL(req.url);
-  const pageParam = parsePositive(searchParams.get('page')) || 1;
-  const sizeParam = parsePositive(searchParams.get('size')) || 10;
-  const authorIdParam = searchParams.get('author_id'); // to filter by
-  const publishDateParam = searchParams.get('publish_date'); // to sort by
+  const { params, error: validationError } = new RequestHelper(req)
+    .validateQueryParams({
+      page: (val) => val === undefined || Number(val) > 1,
+      size: (val) => val === undefined || Number(val) > 1,
+      author_id: (val) => val === undefined || Number(val) > 1,
+      publish_date: (val) => val === 'asc' || val === 'desc',
+    });
+  if (validationError) {
+    return new Response(
+      JSON.stringify(validationError),
+      {
+        status: validationError.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+  const pageParam = params['page'] as number || 1;
+  const sizeParam = params['size'] as number || 10;
+  const authorIdParam = params['author_id']; // to filter by
+  const publishDateParam = params['publish_date']; // to sort by
 
   const from = (pageParam - 1) * sizeParam;
   const to = from + sizeParam - 1;
@@ -47,10 +61,11 @@ export async function handleGetBooks(req: Request, supabase: SupabaseClient): Pr
 
   if (error) {
     console.error(error);
+    const httpErr = new InternalServerError();
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify(httpErr),
       {
-        status: 500,
+        status: httpErr.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
