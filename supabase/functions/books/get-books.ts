@@ -26,7 +26,7 @@ export async function handleGetBooks(req: Request): Promise<Response> {
         id, title, summary, about_authors, pages, edition, price, publish_date, created_at, updated_at,
         authors:authors_books (
           author_id,
-          author:authors (name, sur_name, email)
+          author:authors (name, email)
         )
       `,
       { count: "exact" }
@@ -54,7 +54,16 @@ export async function handleGetBooks(req: Request): Promise<Response> {
   return new Response(JSON.stringify({
     metadata: new Pagination(
       count || 0, pageParam, sizeParam).paginatedMetadata,
-    books,
+    books: books.map((book) => ({
+      ...book,
+      authors: book.authors.map(
+        ({ author_id, author }) => ({
+          id: author_id,
+          name: author[0].name,
+          email: author[0].email,
+        }),
+      ),
+    })),
   }), {
     headers: { "Content-Type": "application/json" },
   });

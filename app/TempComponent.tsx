@@ -12,8 +12,9 @@ import "react-loading-skeleton/dist/skeleton.css";
 type GetBooksResponse = Array<
   Book & {
     authors: Array<{
-      author_id: number;
-      author: { name: string; email: string };
+      id: number;
+      name: string;
+      email: string;
     }>;
   }
 >;
@@ -101,12 +102,7 @@ export default function TempComponentPage() {
                     {book.summary}
                   </Table.Cell>
                   <Table.Cell>
-                    {book.authors
-                      .map(({ author, author_id }) => ({
-                        id: author_id,
-                        name: author.name,
-                      }))
-                      .join(", ")}
+                    {book.authors.map(({ name }) => name).join(", ")}
                   </Table.Cell>
                 </Table.Row>
               ))}
