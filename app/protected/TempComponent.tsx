@@ -58,8 +58,9 @@ export default function TempComponentPage() {
         }>({
           headers: {
             ...corsHeaders,
-            Authorization: (await supabase.auth.getSession()).data.session!
-              .access_token,
+            Authorization: `Bearer ${
+              (await supabase.auth.getSession()).data.session!.access_token
+            }`,
           },
         });
       if (body) {
