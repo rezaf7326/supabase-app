@@ -28,4 +28,12 @@ After a successful login, you will be in the `/protected` page and will view a t
 - The app connects to a Supabase project as the backend service using the _@supabase_ npm package (Supabase sdk).
 - Authentication and athorization is done via Supabase.
 - The only API implemented is `GET /books` which is provided by an edge-function deployed to the same Supabase project (implementations are in the **root** of this repo at `supabase/functions`).
-- To test this application you will need the **._env_** file values that is at the root of this project (and **NOT** the one at the `supabase/functions`).
+- The GET API looks something like this:
+
+```bash
+<supabase_functions_url>/functions/v1/books?page=1&size=5&author_id=1&publish_date=asc
+# The query parameters will be validated, but those are optional so this would also be ok:
+<supabase_functions_url>/functions/v1/books
+```
+
+- To test the application you will need the **._env_** file values that is at the root of this project (and **NOT** the one at the `supabase/functions`).
